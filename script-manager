@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#set -x
+
+OLDPWD=$(pwd)
+for dir in $(dirname $(readlink -f $(find ~/bin/ -type l)))
+do
+   cd $dir
+   if git rev-parse &> /dev/null
+   then
+        REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
+
+        LOCAL=$(git rev-parse @ 2> /dev/null )
+        if [ "$?" -ne 0 ]
+        then
+            #there is no HEAD commit
+            continue
+        fi
+        REMOTE=$(git rev-parse @{u} 2> /dev/null )
+        if [ "$?" -ne 0 ]
+        then
+            #there is no upstream configured
+            continue
+        fi
+        BASE=$(git merge-base @ @{u})
+
+        if [ $LOCAL = $REMOTE ]
+        then
+            echo "$REPO_NAME Up-to-date"
+        elif [ $LOCAL = $BASE ]
+        then
+            echo "$REPO_NAME updatable"
+            #TODO: option to show incoming changes
+            while true; do
+                read -p "update?" ANS
+                case $ANS in
+                [Yy]* ) 
+                    git pull
+                    break;;
+                [Ll]* )
+                    git logga @..@{u} 
+                    ;;
+                [Nn]* ) 
+                    break;;
+                * ) 
+                    echo "answer allowed: y n l";;
+                esac
+            done
+        elif [ $REMOTE = $BASE ]
+        then
+            echo "Need to push"
+        else
+            echo "Diverged"
+        fi
+
+   fi
+done
+
+#cd $OLDPWD
