@@ -2,31 +2,64 @@
 
 #set -x
 
+#TODO: Detect unstaged changes to commit
+
 OLDPWD=$(pwd)
 for dir in $(dirname $(readlink -f $(find ~/bin/ -type l)))
 do
    cd $dir
-   if git rev-parse &> /dev/null
+
+   if git rev-parse &>/dev/null
    then
         REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
 
-        LOCAL=$(git rev-parse @ 2> /dev/null )
+        LOCAL=$(git rev-parse @ 2>/dev/null )
         if [ "$?" -ne 0 ]
         then
             #there is no HEAD commit
             continue
         fi
-        REMOTE=$(git rev-parse @{u} 2> /dev/null )
+
+        REMOTE=$(git rev-parse @{u} 2>/dev/null )
         if [ "$?" -ne 0 ]
         then
             #there is no upstream configured
             continue
         fi
+
         BASE=$(git merge-base @ @{u})
 
         if [ $LOCAL = $REMOTE ]
         then
-            echo "$REPO_NAME Up-to-date"
+            #TODO: list files: be verbose
+            #TODO: add files
+            #TODO: remove files
+            #TODO: commit files
+            #TODO: resolve
+            TOUCHED=
+            if ! git diff --exit-code &>/dev/null #unstaged
+            then
+                TOUCHED=yes
+                echo $REPO_NAME you have unstaged files
+            fi
+
+            if ! git diff --cached --exit-code &>/dev/null #staged
+            then
+                TOUCHED=yes
+                echo $REPO_NAME you have staged files
+            fi
+
+            if [ -n "$(git ls-files --other --exclude-standard --directory)" ] #untracked
+            then
+                TOUCHED=yes
+                echo $REPO_NAME you have untracked files
+            fi
+
+            if [ -z "$TOUCHED" ]
+            then
+                echo "$REPO_NAME Up-to-date"
+            fi
+
         elif [ $LOCAL = $BASE ]
         then
             echo "$REPO_NAME updatable"
@@ -48,9 +81,11 @@ do
             done
         elif [ $REMOTE = $BASE ]
         then
-            echo "Need to push"
+            #TODO: push
+            echo "$REPO_NAME Need to push"
         else
-            echo "Diverged"
+            #TODO: resolve, merge, discart
+            echo "$REPO_NAME Diverged"
         fi
 
    fi
