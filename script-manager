@@ -57,6 +57,7 @@ do
 
             if [ -z "$TOUCHED" ]
             then
+                #TODO: don't show up-to-date repos
                 echo "$REPO_NAME Up-to-date"
             fi
 
