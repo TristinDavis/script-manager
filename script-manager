@@ -1,95 +1,123 @@
 #!/bin/bash
 
-#set -x
+SEARCH_PATH=~/bin
 
-#TODO: Detect unstaged changes to commit
+PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l)))
 
-OLDPWD=$(pwd)
-for dir in $(dirname $(readlink -f $(find ~/bin/ -type l)))
-do
-   cd $dir
+function list_projects() {
+   for dir in $PROJECT_DIRS 
+   do
+      cd $dir
+      if git rev-parse &>/dev/null
+      then
+         REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
+         echo $dir
+      fi
+   done
+}
 
-   if git rev-parse &>/dev/null
-   then
-        REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
+function update_projects() {
+   for dir in $PROJECT_DIRS 
+   do
+      cd $dir
+   
+      if git rev-parse &>/dev/null
+      then
+           REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
+   
+           LOCAL=$(git rev-parse @ 2>/dev/null )
+           if [ "$?" -ne 0 ]
+           then
+               #there is no HEAD commit
+               continue
+           fi
+   
+           REMOTE=$(git rev-parse @{u} 2>/dev/null )
+           if [ "$?" -ne 0 ]
+           then
+               #there is no upstream configured
+               continue
+           fi
+   
+           BASE=$(git merge-base @ @{u})
+   
+           if [ $LOCAL = $REMOTE ]
+           then
+               #TODO: list files: be verbose
+               #TODO: add files
+               #TODO: remove files
+               #TODO: commit files
+               #TODO: resolve
+               TOUCHED=
+               if ! git diff --exit-code &>/dev/null #unstaged
+               then
+                   TOUCHED=yes
+                   echo $REPO_NAME have unstaged files
+               fi
+   
+               if ! git diff --cached --exit-code &>/dev/null #staged
+               then
+                   TOUCHED=yes
+                   echo $REPO_NAME have staged files
+               fi
+   
+               if [ -n "$(git ls-files --other --exclude-standard --directory)" ] #untracked
+               then
+                   TOUCHED=yes
+                   echo $REPO_NAME have untracked files
+               fi
+   
+               if [ -z "$TOUCHED" ]
+               then
+                   #TODO: don't show up-to-date repos
+                   echo "$REPO_NAME Up-to-date"
+               fi
+   
+           elif [ $LOCAL = $BASE ]
+           then
+               echo "$REPO_NAME updatable"
+               #TODO: option to show incoming changes
+               while true; do
+                   read -p "update?" ANS
+                   case $ANS in
+                   [Yy]* ) 
+                       git pull
+                       break;;
+                   [Ll]* )
+                       git logga @..@{u} 
+                       ;;
+                   [Nn]* ) 
+                       break;;
+                   * ) 
+                       echo "answer allowed: y n l";;
+                   esac
+               done
+           elif [ $REMOTE = $BASE ]
+           then
+               #TODO: push
+               echo "$REPO_NAME Need to push"
+           else
+               #TODO: resolve, merge, discart
+               echo "$REPO_NAME Diverged"
+           fi
+   
+      fi
+   done
+}
 
-        LOCAL=$(git rev-parse @ 2>/dev/null )
-        if [ "$?" -ne 0 ]
-        then
-            #there is no HEAD commit
-            continue
-        fi
-
-        REMOTE=$(git rev-parse @{u} 2>/dev/null )
-        if [ "$?" -ne 0 ]
-        then
-            #there is no upstream configured
-            continue
-        fi
-
-        BASE=$(git merge-base @ @{u})
-
-        if [ $LOCAL = $REMOTE ]
-        then
-            #TODO: list files: be verbose
-            #TODO: add files
-            #TODO: remove files
-            #TODO: commit files
-            #TODO: resolve
-            TOUCHED=
-            if ! git diff --exit-code &>/dev/null #unstaged
-            then
-                TOUCHED=yes
-                echo $REPO_NAME you have unstaged files
-            fi
-
-            if ! git diff --cached --exit-code &>/dev/null #staged
-            then
-                TOUCHED=yes
-                echo $REPO_NAME you have staged files
-            fi
-
-            if [ -n "$(git ls-files --other --exclude-standard --directory)" ] #untracked
-            then
-                TOUCHED=yes
-                echo $REPO_NAME you have untracked files
-            fi
-
-            if [ -z "$TOUCHED" ]
-            then
-                #TODO: don't show up-to-date repos
-                echo "$REPO_NAME Up-to-date"
-            fi
-
-        elif [ $LOCAL = $BASE ]
-        then
-            echo "$REPO_NAME updatable"
-            #TODO: option to show incoming changes
-            while true; do
-                read -p "update?" ANS
-                case $ANS in
-                [Yy]* ) 
-                    git pull
-                    break;;
-                [Ll]* )
-                    git logga @..@{u} 
-                    ;;
-                [Nn]* ) 
-                    break;;
-                * ) 
-                    echo "answer allowed: y n l";;
-                esac
-            done
-        elif [ $REMOTE = $BASE ]
-        then
-            #TODO: push
-            echo "$REPO_NAME Need to push"
-        else
-            #TODO: resolve, merge, discart
-            echo "$REPO_NAME Diverged"
-        fi
-
-   fi
-done
-
-#cd $OLDPWD
+if [ "$1" == "-e" ]
+then
+   echo
+   select project in $(list_projects)
+   do
+      cd $project
+      select file in $(ls -1)
+      do
+         env vim $file
+      done
+   done
+elif [ "$1" == "-u" ]
+then
+   echo
+   update_projects
+fi
