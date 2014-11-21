@@ -48,7 +48,7 @@ function update_projects() {
                #TODO: remove files
                #TODO: commit files
                #TODO: resolve
-               TOUCHED=
+               TOUCHED=no
                if ! git diff --exit-code &>/dev/null #unstaged
                then
                    TOUCHED=yes
@@ -67,9 +67,8 @@ function update_projects() {
                    echo $REPO_NAME have untracked files
                fi
    
-               if [ -z "$TOUCHED" ]
-               then
-                   #TODO: don't show up-to-date repos
+               if [ "$TOUCHED" = "no" ] && [ "$SILENT" = "no" ]
+               then                   
                    echo "$REPO_NAME Up-to-date"
                fi
    
@@ -100,14 +99,13 @@ function update_projects() {
                #TODO: resolve, merge, discart
                echo "$REPO_NAME Diverged"
            fi
-   
       fi
    done
 }
 
+echo
 if [ "$1" == "-e" ]
 then
-   echo
    select project in $(list_projects)
    do
       cd $project
@@ -118,6 +116,11 @@ then
    done
 elif [ "$1" == "-u" ]
 then
-   echo
-   update_projects
+   update_projects 
+elif [ "$1" == "-s" ]
+then
+   SILENT="yes"
+   update_projects s
 fi
+echo
+
