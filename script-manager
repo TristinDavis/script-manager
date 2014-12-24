@@ -1,6 +1,50 @@
 #!/bin/bash
 
+#
+# Help to maintain your script ecosystem
+#
+
+# debug {{{
+eval SCRIPT_DEBUG="\$$(basename $0 | tr - _)_DEBUG"
+SCRIPT_DEBUG=${SCRIPT_DEBUG:--1}
+
+if [ "$SCRIPT_DEBUG" -ge 1 ]
+then
+   set -x
+fi
+if [ "$SCRIPT_DEBUG" -ge 10 ]
+then
+   set -v
+fi
+#}}}
+
+# init {{{
 SEARCH_PATH=~/bin
+# }}}
+
+# functions {{{
+function help {
+   local scriptname="$(basename $0)"
+   cat >&2 <<EOF
+$scriptname is a manager to keep you up to date with your scripts
+
+Options:
+
+    -l, --list      List projects linked in path
+    -e, --edit      Allows to edit files on project
+    -u, --update    Update projects
+    -s, --silent    Update projects silently
+        --goto      Select a path for a project under version control
+
+Examples :
+
+ $ $scriptname
+ $ $scriptname -u
+ $ cd \$($scriptname --goto)
+
+EOF
+}
+
 
 PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l)))
 
@@ -101,26 +145,88 @@ function update_projects() {
            fi
       fi
    done
+   echo
 }
+# }}}
 
-echo
-if [ "$1" == "-e" ]
+# parse {{{
+TEMP=$(getopt -o elush -l edit,list,update,silent,goto,help -n $(basename $0) -- "$@")
+
+EXIT=$?
+if [ $EXIT != 0 ]
 then
-   select project in $(list_projects)
-   do
-      cd $project
-      select file in $(ls -1)
-      do
-         env vim $file
-      done
-   done
-elif [ "$1" == "-u" ]
-then
-   update_projects 
-elif [ "$1" == "-s" ]
-then
-   SILENT="yes"
-   update_projects s
+   help
+   exit $EXIT
 fi
+
+# process script arguments
+eval set -- "$TEMP"
+
 echo
 
+#TODO: Only parse commands, not execute here
+while true
+do
+   case "$1" in
+      -e|--edit)
+         select projectpath in $(list_projects) "quit"
+         do
+            if [ "$REPLY" == "quit" ]
+            then
+               exit 0
+            fi
+
+            cd $projectpath
+            select file in $(ls -1)
+            do
+               env vim $file
+            done
+         done
+         ;;
+      -l|--list) 
+         list_projects
+         exit 0
+         ;;
+      -u|--update) 
+         update_projects 
+         exit 0
+         ;;
+      -s|--silent) 
+         SILENT="yes"
+         update_projects s
+         exit
+         ;;
+      --goto)
+         select projectpath in $(list_projects)
+         do
+            echo $projectpath
+            exit 0
+         done
+         ;;
+      -h|--help)
+         help
+         exit
+         ;;
+      --)
+         shift
+         break ;;
+      *)
+         cat <&2 <<EOF
+
+Error, unknow arguments $1
+EOF
+         help
+         exit 1
+         ;;
+   esac
+   shift
+done
+
+echo
+# }}}
+
+# exec {{{
+list_projects
+# }}}
+
+# vim: fdm=marker
