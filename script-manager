@@ -30,7 +30,7 @@ $scriptname is a manager to keep you up to date with your scripts
 
 Options:
 
-    -l, --list      List projects linked in path
+    -l, --list      List projects linked in path. (default)
     -e, --edit      Allows to edit files on project
     -u, --update    Update projects
     -s, --silent    Update projects silently
@@ -46,7 +46,7 @@ EOF
 }
 
 
-PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l)))
+PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
 
 function list_projects() {
    for dir in $PROJECT_DIRS 
@@ -58,6 +58,7 @@ function list_projects() {
          echo $dir
       fi
    done
+   echo
 }
 
 function update_projects() {
@@ -221,8 +222,6 @@ EOF
    esac
    shift
 done
-
-echo
 # }}}
 
 # exec {{{
