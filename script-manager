@@ -20,6 +20,7 @@ fi
 
 # init {{{
 SEARCH_PATH=~/bin
+ACTION="list"
 # }}}
 
 # functions {{{
@@ -31,14 +32,16 @@ $scriptname is a manager to keep you up to date with your scripts
 Options:
 
     -l, --list      List projects linked in path. (default)
+    -s, --status    Show status for projects
     -e, --edit      Allows to edit files on project
     -u, --update    Update projects
-    -s, --silent    Update projects silently
+        --silent    work projects silently
         --goto      Select a path for a project under version control
 
 Examples :
 
  $ $scriptname
+ $ $scriptname -s
  $ $scriptname -u
  $ cd \$($scriptname --goto)
 
@@ -121,21 +124,24 @@ function update_projects() {
            then
                echo "$REPO_NAME updatable"
                #TODO: option to show incoming changes
-               while true; do
-                   read -p "update?" ANS
-                   case $ANS in
-                   [Yy]* )
-                       git pull
-                       break;;
-                   [Ll]* )
-                       git logga @..@{u} 
-                       ;;
-                   [Nn]* )
-                       break;;
-                   * )
-                       echo "answer allowed: y n l";;
-                   esac
-               done
+               if [ "$ACTION" == "update" ]
+               then
+                  while true; do
+                      read -p "update?" ANS
+                      case $ANS in
+                      [Yy]* )
+                          git pull
+                          break;;
+                      [Ll]* )
+                          git logga @..@{u} 
+                          ;;
+                      [Nn]* )
+                          break;;
+                      * )
+                          echo "answer allowed: y n l";;
+                      esac
+                  done
+               fi
            elif [ $REMOTE = $BASE ]
            then
                #TODO: push
@@ -148,10 +154,34 @@ function update_projects() {
    done
    echo
 }
+
+function edit_project {
+   select projectpath in $(list_projects) "quit"
+   do
+      if [ "$REPLY" == "quit" ]
+      then
+         exit 0
+      fi
+
+      cd $projectpath
+      select file in $(ls -1)
+      do
+         env vim $file
+      done
+   done
+}
+
+function goto_project {
+   select projectpath in $(list_projects)
+   do
+      echo $projectpath
+      exit 0
+   done
+}
 # }}}
 
 # parse {{{
-TEMP=$(getopt -o elush -l edit,list,update,silent,goto,help -n $(basename $0) -- "$@")
+TEMP=$(getopt -o elush -l edit,list,update,silent,status,goto,help -n $(basename $0) -- "$@")
 
 EXIT=$?
 if [ $EXIT != 0 ]
@@ -165,44 +195,27 @@ eval set -- "$TEMP"
 
 echo
 
-#TODO: Only parse commands, not execute here
 while true
 do
    case "$1" in
       -e|--edit)
-         select projectpath in $(list_projects) "quit"
-         do
-            if [ "$REPLY" == "quit" ]
-            then
-               exit 0
-            fi
-
-            cd $projectpath
-            select file in $(ls -1)
-            do
-               env vim $file
-            done
-         done
+         ACTION="edit"
          ;;
       -l|--list)
-         list_projects
-         exit 0
+         ACTION="list"
          ;;
       -u|--update)
-         update_projects
-         exit 0
+         ACTION="update"
          ;;
-      -s|--silent) 
+      -s|--status)
+         ACTION="status"
+         ;;
+      --silent) 
          SILENT="yes"
-         update_projects s
-         exit
+         ACTION="update"
          ;;
       --goto)
-         select projectpath in $(list_projects)
-         do
-            echo $projectpath
-            exit 0
-         done
+         ACTION="goto"
          ;;
       -h|--help)
          help
@@ -210,7 +223,8 @@ do
          ;;
       --)
          shift
-         break ;;
+         break
+         ;;
       *)
          cat <&2 <<EOF
 
@@ -225,7 +239,26 @@ done
 # }}}
 
 # exec {{{
-list_projects
+case "$ACTION" in
+   list)
+      list_projects
+      ;;
+   status)
+      update_projects
+      ;;
+   update)
+      update_projects
+      ;;
+   edit)
+      edit_project
+      ;;
+   goto)
+      goto_project
+      ;;
+   *)
+      ;;
+esac
+
 # }}}
 
 # vim: fdm=marker
