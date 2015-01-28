@@ -62,30 +62,30 @@ function list_projects() {
 }
 
 function update_projects() {
-   for dir in $PROJECT_DIRS 
+   for dir in $PROJECT_DIRS
    do
       cd $dir
-   
+
       if git rev-parse &>/dev/null
       then
            REPO_NAME="$(basename $(git rev-parse --show-toplevel))"
-   
+
            LOCAL=$(git rev-parse @ 2>/dev/null )
            if [ "$?" -ne 0 ]
            then
                #there is no HEAD commit
                continue
            fi
-   
+
            REMOTE=$(git rev-parse @{u} 2>/dev/null )
            if [ "$?" -ne 0 ]
            then
                #there is no upstream configured
                continue
            fi
-   
+
            BASE=$(git merge-base @ @{u})
-   
+
            if [ $LOCAL = $REMOTE ]
            then
                #TODO: list files: be verbose
@@ -99,24 +99,24 @@ function update_projects() {
                    TOUCHED=yes
                    echo $REPO_NAME have unstaged files
                fi
-   
+
                if ! git diff --cached --exit-code &>/dev/null #staged
                then
                    TOUCHED=yes
                    echo $REPO_NAME have staged files
                fi
-   
+
                if [ -n "$(git ls-files --other --exclude-standard --directory)" ] #untracked
                then
                    TOUCHED=yes
                    echo $REPO_NAME have untracked files
                fi
-   
+
                if [ "$TOUCHED" = "no" ] && [ "$SILENT" = "no" ]
-               then                   
+               then
                    echo "$REPO_NAME Up-to-date"
                fi
-   
+
            elif [ $LOCAL = $BASE ]
            then
                echo "$REPO_NAME updatable"
@@ -124,15 +124,15 @@ function update_projects() {
                while true; do
                    read -p "update?" ANS
                    case $ANS in
-                   [Yy]* ) 
+                   [Yy]* )
                        git pull
                        break;;
                    [Ll]* )
                        git logga @..@{u} 
                        ;;
-                   [Nn]* ) 
+                   [Nn]* )
                        break;;
-                   * ) 
+                   * )
                        echo "answer allowed: y n l";;
                    esac
                done
@@ -184,12 +184,12 @@ do
             done
          done
          ;;
-      -l|--list) 
+      -l|--list)
          list_projects
          exit 0
          ;;
-      -u|--update) 
-         update_projects 
+      -u|--update)
+         update_projects
          exit 0
          ;;
       -s|--silent) 
