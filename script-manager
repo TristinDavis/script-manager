@@ -48,10 +48,12 @@ Examples :
 EOF
 }
 
-
-PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
+function load_project_dirs() {
+   PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
+}
 
 function list_projects() {
+   load_project_dirs
    for dir in $PROJECT_DIRS 
    do
       cd $dir
@@ -65,6 +67,7 @@ function list_projects() {
 }
 
 function update_projects() {
+   load_project_dirs
    for dir in $PROJECT_DIRS
    do
       cd $dir
