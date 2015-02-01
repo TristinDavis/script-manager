@@ -18,11 +18,6 @@ then
 fi
 #}}}
 
-# init {{{
-SEARCH_PATH=~/bin
-ACTION="list"
-# }}}
-
 # functions {{{
 function help {
    local scriptname="$(basename $0)"
@@ -31,12 +26,15 @@ $scriptname is a manager to keep you up to date with your scripts
 
 Options:
 
-    -l, --list      List projects linked in path. (default)
-    -s, --status    Show status for projects
-    -e, --edit      Allows to edit files on project
-    -u, --update    Update projects
-        --silent    work projects silently
-        --goto      Select a path for a project under version control
+    -l, --list                List projects linked in path. (default)
+    -s, --status              Show status for projects
+    -e, --edit                Allows to edit files on project
+    -u, --update              Update projects
+    -r, --runtime[=path]      Search on runtime path (default)
+    -p, --project[=path]      Search on projects path
+    -c, --config=path         Change config file
+        --silent              work projects silently
+        --goto                Select a path for a project under version control
 
 Examples :
 
@@ -49,7 +47,16 @@ EOF
 }
 
 function load_project_dirs() {
-   PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
+   if [ "$RUNTIME" == "yes" ]
+   then
+      PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
+   else
+      PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type d -name \\.git | sort)))
+   fi
+}
+
+function real_dir() {
+   echo $(dirname $(readlink -f $1))
 }
 
 function list_projects() {
@@ -183,8 +190,15 @@ function goto_project {
 }
 # }}}
 
+# init {{{
+INIT_FILE=~/.script-manager
+SEARCH_PATH=~/bin
+RUNTIME='yes'
+ACTION="list"
+# }}}
+
 # parse {{{
-TEMP=$(getopt -o elush -l edit,list,update,silent,status,goto,help -n $(basename $0) -- "$@")
+TEMP=$(getopt -o elusp::r::ch -l edit,list,update,silent,status,goto,project::,runtime::,config,help -n $(basename $0) -- "$@")
 
 EXIT=$?
 if [ $EXIT != 0 ]
@@ -220,6 +234,34 @@ do
       --goto)
          ACTION="goto"
          ;;
+      -p|--project)
+         RUNTIME="no"
+         case "$2" in
+             "")
+               shift
+               ;;
+             *)
+               PROJECTS_PATH="$2"
+               shift
+               ;;
+         esac
+         ;;
+      -r|--runtime)
+         RUNTIME="yes"
+         case "$2" in
+             "")
+               shift
+               ;;
+             *)
+               RUNTIME_PATH="$2"
+               shift
+               ;;
+         esac
+         ;;
+      -c|--config)
+         INIT_FILE="$1"
+         shift
+         ;;
       -h|--help)
          help
          exit
@@ -242,6 +284,23 @@ done
 # }}}
 
 # exec {{{
+
+if [ -f "$INIT_FILE" ]
+then
+   . $(real_dir $0)/bash-ini-parser/bash-ini-parser
+   cfg_parser $INIT_FILE
+   cfg.section.config
+   RUNTIME_PATH=$path
+   PROJECTS_PATH=$projects
+fi
+
+if [ "$RUNTIME" == "yes" ]
+then
+   SEARCH_PATH=${RUNTIME_PATH:-$SEARCH_PATH}
+else
+   SEARCH_PATH=${PROJECTS_PATH:-$SEARCH_PATH}
+fi
+
 case "$ACTION" in
    list)
       list_projects
