@@ -33,8 +33,8 @@ Options:
     -r, --runtime[=path]      Search on runtime path (default)
     -p, --project[=path]      Search on projects path
     -c, --config=path         Change config file
-        --silent              work projects silently
-        --goto                Select a path for a project under version control
+        --silent              Work projects silently
+        --goto[=path]         Select a path for a project under version control
 
 Examples :
 
@@ -47,12 +47,19 @@ EOF
 }
 
 function load_project_dirs() {
-   if [ "$RUNTIME" == "yes" ]
+  if [ "$RUNTIME" == "yes" ]
    then
-      PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type l | sort)))
+      FIND_OPTIONS="$SEARCH_PATH -type l"
    else
-      PROJECT_DIRS=$(dirname $(readlink -f $(find $SEARCH_PATH -type d -name \\.git | sort)))
+      FIND_OPTIONS="$SEARCH_PATH -type d -name .git"
    fi
+   if [ "$FILTER" != "" ]
+   then
+      GREP_FILTER="grep -i $FILTER |"
+   else
+      GREP_FILTER=""
+   fi
+   PROJECT_DIRS=$(dirname $(readlink -f $(eval "find $FIND_OPTIONS | $GREP_FILTER sort") 2>/dev/null) 2>/dev/null)
 }
 
 function real_dir() {
@@ -195,10 +202,11 @@ INIT_FILE=~/.script-manager
 SEARCH_PATH=~/bin
 RUNTIME='yes'
 ACTION="list"
+FILTER=""
 # }}}
 
 # parse {{{
-TEMP=$(getopt -o elusp::r::ch -l edit,list,update,silent,status,goto,project::,runtime::,config,help -n $(basename $0) -- "$@")
+TEMP=$(getopt -o elusp::r::ch -l edit,list,update,silent,status,goto::,project::,runtime::,config,help -n $(basename $0) -- "$@")
 
 EXIT=$?
 if [ $EXIT != 0 ]
@@ -233,6 +241,15 @@ do
          ;;
       --goto)
          ACTION="goto"
+         case "$2" in
+             "")
+               shift
+               ;;
+             *)
+               FILTER="$2"
+               shift
+               ;;
+         esac
          ;;
       -p|--project)
          RUNTIME="no"
