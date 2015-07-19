@@ -22,9 +22,13 @@ Show `--help` for examples. basically
 
     script-manager -u do what you want
 
-An useful alias you can define on your startup scripts
+An useful function you can define on your startup scripts
 
-    alias cd-script='cd $(script-manager --goto)'
+    function cd-script {
+       cd $(script-manager --goto=$@)
+    }
+    
+    $ cd-script <empty-or-filter>
 
 ## Features
 
