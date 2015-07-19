@@ -306,7 +306,7 @@ if [ -f "$INIT_FILE" ]
 then
    . $(real_dir $0)/bash-ini-parser/bash-ini-parser
    cfg_parser $INIT_FILE
-   cfg.section.config
+   cfg_section_config
    RUNTIME_PATH=$path
    PROJECTS_PATH=$projects
 fi
